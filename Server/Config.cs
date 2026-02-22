@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Linq;
 using System.Net;
 using System.Runtime.Serialization;
 using System.Xml;
@@ -115,7 +116,18 @@ namespace PhinixServer
         /// </summary>
         [DataMember(Name = "ChatHistoryLength", Order = 15)]
         public int ChatHistoryLength = 40;
-
+        
+        
+        /// <summary>
+        /// Path to the blacklisted terms file
+        /// </summary>
+        [DataMember(Name = "BlacklistFilePath", Order = 16)]
+        public string BlacklistFilePath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData) == string.Empty 
+            ? "/var/tmp/phinix.blacklist" : 
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData) + "\\phinix.blacklist";
+        
+        
+        
         /// <summary>
         /// Loads a <see cref="Config"/> object from the given file path. Will return a default <see cref="Config"/> if the file does not exist.
         /// </summary>

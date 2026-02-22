@@ -47,6 +47,28 @@ namespace Chat
         private int messageHistoryCapacity;
 
         /// <summary>
+        /// Blacklisted words
+        /// </summary>
+        private HashSet<string> blacklist = new HashSet<string>();
+
+        private static ServerChat m_instance = null;
+
+        public static ServerChat GetInstance()
+        {
+            return m_instance;
+        }
+
+        public void AddToBlacklist(string word)
+        {
+            if (!blacklist.Contains(word)) blacklist.Add(word);
+        }
+
+        public void RemoveFromBlacklist(string word)
+        {
+            if (blacklist.Contains(word)) blacklist.Remove(word);
+        }
+
+        /// <summary>
         /// Initialises a new <see cref="ServerChat"/> instance.
         /// </summary>
         /// <param name="netServer"></param>
@@ -55,6 +77,7 @@ namespace Chat
         /// <param name="messageHistoryCapacity"></param>
         public ServerChat(NetServer netServer, ServerAuthenticator authenticator, ServerUserManager userManager, int messageHistoryCapacity)
         {
+            m_instance = this;
             this.netServer = netServer;
             this.authenticator = authenticator;
             this.userManager = userManager;
@@ -78,7 +101,7 @@ namespace Chat
         {
             Load(messageHistoryStorePath);
         }
-
+        
         /// <inheritdoc />
         /// <summary>
         /// Saves the chat history to the given file, overwriting if it exists.
@@ -226,13 +249,14 @@ namespace Chat
             }
 
             // Refuse packets from non-logged in users
-            if (!userManager.IsLoggedIn(connectionId, packet.Uuid))
+            if (!userManager.IsLoggedIn(connectionId, packet.Uuid) || messageContainsBlacklistedWord(packet.Message))
             {
                 sendFailedChatMessageResponse(connectionId, packet.MessageId);
 
                 // Stop here
                 return;
             }
+
 
             // Get a copy of the packet's original message ID
             string originalMessageId = packet.MessageId;
@@ -253,7 +277,7 @@ namespace Chat
             sendChatMessageResponse(connectionId, true, originalMessageId, newMessageId, sanitisedMessage);
 
             // Broadcast the chat packet to everyone but the sender
-            broadcastChatMessage(packet.Uuid, newMessageId, sanitisedMessage, timestamp, new[]{connectionId});
+            broadcastChatMessage(packet.Uuid, newMessageId, sanitisedMessage, timestamp, new[] { connectionId });
         }
 
         /// <summary>
@@ -387,6 +411,58 @@ namespace Chat
         private void sendFailedChatMessageResponse(string connectionId, string originalMessageId)
         {
             sendChatMessageResponse(connectionId, false, originalMessageId, "", "");
+        }
+
+        /// <summary>
+        /// Load the blacklist from a given path
+        /// </summary>
+        /// <param name="path"></param>
+        public void LoadBlacklist(string path)
+        {
+            blacklist.Clear();
+            if (File.Exists(path))
+            {
+                FileStream stream = File.Open(path, FileMode.Open);
+                StreamReader sr = new StreamReader(stream);
+                while (!sr.EndOfStream)
+                {
+                    blacklist.Add(sr.ReadLine());
+                }
+
+                sr.Close();
+                stream.Close();
+            }
+        }
+
+
+        /// <summary>
+        /// Save the blacklist to a given path
+        /// </summary>
+        /// <param name="path"></param>
+        public void SaveBlacklist(string path)
+        {
+            FileStream stream = File.OpenWrite(path);
+            if (stream != null)
+            {
+                StreamWriter sr = new StreamWriter(stream);
+                for (int i = 0; i < blacklist.Count; i++)
+                {
+                    sr.WriteLine(blacklist.ElementAt(i));
+                }
+                sr.Close();
+                stream.Close();
+            }
+
+        }
+
+        private bool messageContainsBlacklistedWord(string message)
+        {
+            foreach (string word in message.Split(' '))
+            {
+                if (blacklist.Contains(word.ToLower()))
+                    return true;
+            }
+            return false;
         }
     }
 }

@@ -51,6 +51,7 @@ namespace PhinixServer
             );
             UserManager = new ServerUserManager(Connections, Authenticator, Config.MaxDisplayNameLength);
             Chat = new ServerChat(Connections, Authenticator, UserManager, Config.ChatHistoryLength);
+            Chat.LoadBlacklist(Config.BlacklistFilePath);
             Trading = new ServerTrading(Connections, Authenticator, UserManager);
 
             // Add handler for ILoggable modules
@@ -127,6 +128,7 @@ namespace PhinixServer
             Authenticator.Save(Config.CredentialDatabasePath);
             UserManager.Save(Config.UserDatabasePath);
             Chat.Save(Config.ChatHistoryPath);
+            Chat.SaveBlacklist(Config.BlacklistFilePath);
             Trading.Save(Config.TradeDatabasePath);
 
             // Save config too
